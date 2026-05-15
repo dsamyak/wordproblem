@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { generateQuestionBank } from '../utils/questionBank';
+import { generateQuestionBank, shuffle } from '../utils/questionBank';
 import { narrate, stopNarration, sounds } from '../utils/audio';
 import { playWorldIntro, playReadQuestion, playCorrectNarration, playWrongNarration, playWorldComplete } from '../utils/narration';
 import QuestionRenderer from './QuestionRenderer';
@@ -24,7 +24,6 @@ function calcStars(correct, total) {
 }
 
 export default function PlayPhase({ onComplete, audioEnabled }) {
-  const allQuestions = useMemo(() => generateQuestionBank(), []);
   const [currentWorld, setCurrentWorld] = useState(-1);
   const [worldResults, setWorldResults] = useState({});
   const [qIndex, setQIndex] = useState(0);
@@ -38,12 +37,8 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
   const [xpPopup, setXpPopup] = useState(null);
   const [worldComplete, setWorldComplete] = useState(false);
   const narrationRef = useRef(null);
-
-  const worldQuestions = useMemo(() => {
-    if (currentWorld < 0) return [];
-    const w = WORLDS[currentWorld];
-    return allQuestions.filter(q => q.difficulty === w.difficulty).slice(0, w.count);
-  }, [currentWorld, allQuestions]);
+  // Fresh random bank each time a world is selected
+  const [worldQuestions, setWorldQuestions] = useState([]);
 
   const q = worldQuestions[qIndex];
 
@@ -61,6 +56,11 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
   }, [qIndex, audioEnabled, q, worldComplete, feedback, currentWorld]);
 
   const startWorld = useCallback((worldId) => {
+    // Generate a fresh random bank and pick questions for this world
+    const freshBank = generateQuestionBank();
+    const w = WORLDS[worldId];
+    const filtered = shuffle(freshBank.filter(q => q.difficulty === w.difficulty)).slice(0, w.count);
+    setWorldQuestions(filtered);
     setCurrentWorld(worldId);
     setQIndex(0); setScore(0); setLives(3); setStreak(0);
     setWorldComplete(false); setFeedback(null); setAnswered(false);
