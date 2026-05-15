@@ -1,5 +1,11 @@
-import { useState, useCallback } from 'react';
-import { speak, sounds } from '../utils/audio';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { narrate, stopNarration, sounds } from '../utils/audio';
+import {
+  simulateStation1Intro, simulateStation1Combine, simulateStation1Answer,
+  simulateStation2Intro, simulateStation2Complete,
+  simulateStation3Intro, simulateStation3PartA, simulateStation3Complete,
+  simulateStation4Intro, simulateStation4Complete, simulateAllComplete,
+} from '../utils/narration';
 
 const STATIONS = [
   { id: 0, title: 'Story Scene', subtitle: 'Combine Groups', icon: '🎨' },
@@ -18,21 +24,39 @@ function Station1({ audioEnabled, onNext }) {
   const [scIdx, setScIdx] = useState(0);
   const [combined, setCombined] = useState(false);
   const [answered, setAnswered] = useState(false);
+  const narrationRef = useRef(null);
   const sc = scenarios[scIdx];
   const whole = sc.p1 + sc.p2;
 
+  useEffect(() => {
+    if (audioEnabled) {
+      narrationRef.current = narrate(
+        simulateStation1Intro(sc.name, sc.objName, sc.p1, sc.p2), true
+      );
+    }
+    return () => { narrationRef.current?.cancel(); };
+  }, [scIdx, audioEnabled, sc.name, sc.objName, sc.p1, sc.p2]);
+
   const handleCombine = () => {
     setCombined(true);
-    if (audioEnabled) speak(`${sc.p1} plus ${sc.p2} equals... let's see!`, true);
+    narrationRef.current?.cancel();
+    if (audioEnabled) {
+      narrationRef.current = narrate(simulateStation1Combine(sc.p1, sc.p2), true);
+    }
   };
 
   const handleAnswer = () => {
     setAnswered(true);
     sounds.correct();
-    if (audioEnabled) speak(`That's right! ${sc.p1} plus ${sc.p2} equals ${whole}!`, true);
+    narrationRef.current?.cancel();
+    if (audioEnabled) {
+      narrationRef.current = narrate(simulateStation1Answer(sc.p1, sc.p2, whole), true);
+    }
   };
 
   const nextScenario = () => {
+    narrationRef.current?.cancel();
+    stopNarration();
     if (scIdx < scenarios.length - 1) {
       setScIdx(i => i + 1);
       setCombined(false);
@@ -112,7 +136,7 @@ function Station1({ audioEnabled, onNext }) {
           </div>
           {scIdx < scenarios.length - 1
             ? <button className="btn btn-outline btn-sm" onClick={nextScenario} style={{ marginTop: 12 }}>Next Story →</button>
-            : <button className="btn btn-primary" onClick={onNext} style={{ marginTop: 12 }}>Next Station →</button>
+            : <button className="btn btn-primary" onClick={() => { narrationRef.current?.cancel(); stopNarration(); onNext(); }} style={{ marginTop: 12 }}>Next Station →</button>
           }
         </div>
       )}
@@ -129,22 +153,35 @@ function Station2({ audioEnabled, onNext }) {
   ];
   const [scIdx, setScIdx] = useState(0);
   const [merged, setMerged] = useState(0);
+  const narrationRef = useRef(null);
   const sc = scenarios[scIdx];
   const total = sc.items1 + sc.items2;
+
+  useEffect(() => {
+    if (audioEnabled) {
+      narrationRef.current = narrate(simulateStation2Intro(sc.name), true);
+    }
+    return () => { narrationRef.current?.cancel(); };
+  }, [scIdx, audioEnabled, sc.name]);
 
   const addToMerge = () => {
     if (merged < total) {
       const next = merged + 1;
       setMerged(next);
       sounds.click();
-      if (next === total && audioEnabled) {
+      if (next === total) {
         sounds.correct();
-        speak(`${sc.items1} plus ${sc.items2} equals ${total}!`, true);
+        narrationRef.current?.cancel();
+        if (audioEnabled) {
+          narrationRef.current = narrate(simulateStation2Complete(sc.items1, sc.items2, total), true);
+        }
       }
     }
   };
 
   const nextSc = () => {
+    narrationRef.current?.cancel();
+    stopNarration();
     if (scIdx < scenarios.length - 1) {
       setScIdx(i => i + 1);
       setMerged(0);
@@ -195,7 +232,7 @@ function Station2({ audioEnabled, onNext }) {
       {merged === total ? (
         scIdx < scenarios.length - 1
           ? <button className="btn btn-outline btn-sm" onClick={nextSc}>Try Another →</button>
-          : <button className="btn btn-primary" onClick={onNext}>Next Station →</button>
+          : <button className="btn btn-primary" onClick={() => { narrationRef.current?.cancel(); stopNarration(); onNext(); }}>Next Station →</button>
       ) : null}
     </div>
   );
@@ -212,25 +249,41 @@ function Station3({ audioEnabled, onNext }) {
   const [partA, setPartA] = useState(null);
   const [partB, setPartB] = useState(null);
   const [revealed, setRevealed] = useState(false);
+  const narrationRef = useRef(null);
   const sc = scenarios[scIdx];
+
+  useEffect(() => {
+    if (audioEnabled) {
+      narrationRef.current = narrate(simulateStation3Intro(sc.text), true);
+    }
+    return () => { narrationRef.current?.cancel(); };
+  }, [scIdx, audioEnabled, sc.text]);
 
   const handleCardClick = (val) => {
     if (revealed) return;
     if (partA === null && val === sc.p1) {
       setPartA(val);
       sounds.click();
-      if (audioEnabled) speak(`Part A is ${val}`, true);
+      narrationRef.current?.cancel();
+      if (audioEnabled) {
+        narrationRef.current = narrate(simulateStation3PartA(val), true);
+      }
     } else if (partA !== null && partB === null && val === sc.p2) {
       setPartB(val);
       sounds.correct();
       setRevealed(true);
-      if (audioEnabled) speak(`${sc.p1} plus ${sc.p2} equals ${sc.whole}!`, true);
+      narrationRef.current?.cancel();
+      if (audioEnabled) {
+        narrationRef.current = narrate(simulateStation3Complete(sc.p1, sc.p2, sc.whole), true);
+      }
     } else {
       sounds.wrong();
     }
   };
 
   const nextSc = () => {
+    narrationRef.current?.cancel();
+    stopNarration();
     if (scIdx < scenarios.length - 1) {
       setScIdx(i => i + 1);
       setPartA(null); setPartB(null); setRevealed(false);
@@ -243,7 +296,6 @@ function Station3({ audioEnabled, onNext }) {
       <p style={{ color: 'var(--text-secondary)', marginBottom: 12 }}>{sc.text}</p>
       <div className="simulate-tip">💡 Drag the right numbers into Part A and Part B!</div>
 
-      {/* Bar Model Visual */}
       <div style={{ margin: '20px auto', maxWidth: 400 }}>
         <div style={{ marginBottom: 4, fontSize: '0.8rem', color: 'var(--text-muted)' }}>WHOLE</div>
         <div style={{
@@ -278,7 +330,6 @@ function Station3({ audioEnabled, onNext }) {
         </div>
       </div>
 
-      {/* Number Cards */}
       <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', margin: '16px 0' }}>
         {sc.cards.map((val, i) => (
           <button key={i} className="option-btn" onClick={() => handleCardClick(val)}
@@ -301,7 +352,7 @@ function Station3({ audioEnabled, onNext }) {
       {revealed && (
         scIdx < scenarios.length - 1
           ? <button className="btn btn-outline btn-sm" onClick={nextSc}>Try Another →</button>
-          : <button className="btn btn-primary" onClick={onNext}>Next Station →</button>
+          : <button className="btn btn-primary" onClick={() => { narrationRef.current?.cancel(); stopNarration(); onNext(); }}>Next Station →</button>
       )}
     </div>
   );
@@ -316,9 +367,17 @@ function Station4({ audioEnabled, onComplete }) {
   ];
   const [scIdx, setScIdx] = useState(0);
   const [jumpCount, setJumpCount] = useState(0);
+  const narrationRef = useRef(null);
   const sc = scenarios[scIdx];
   const frogPos = sc.start + jumpCount;
   const done = jumpCount === sc.jumps;
+
+  useEffect(() => {
+    if (audioEnabled) {
+      narrationRef.current = narrate(simulateStation4Intro(sc.start, sc.jumps), true);
+    }
+    return () => { narrationRef.current?.cancel(); };
+  }, [scIdx, audioEnabled, sc.start, sc.jumps]);
 
   const handleJump = () => {
     if (done) return;
@@ -327,7 +386,10 @@ function Station4({ audioEnabled, onComplete }) {
     if (jumpCount + 1 === sc.jumps) {
       setTimeout(() => {
         sounds.correct();
-        if (audioEnabled) speak(`${sc.start} plus ${sc.jumps} equals ${sc.answer}! Great jumping!`, true);
+        narrationRef.current?.cancel();
+        if (audioEnabled) {
+          narrationRef.current = narrate(simulateStation4Complete(sc.start, sc.jumps, sc.answer), true);
+        }
       }, 300);
     }
   };
@@ -335,10 +397,18 @@ function Station4({ audioEnabled, onComplete }) {
   const handleReset = () => { setJumpCount(0); };
 
   const nextSc = () => {
+    narrationRef.current?.cancel();
+    stopNarration();
     if (scIdx < scenarios.length - 1) {
       setScIdx(i => i + 1);
       setJumpCount(0);
     }
+  };
+
+  const handleComplete = () => {
+    narrationRef.current?.cancel();
+    stopNarration();
+    onComplete();
   };
 
   const lineMax = 20;
@@ -350,9 +420,7 @@ function Station4({ audioEnabled, onComplete }) {
       </p>
       <div className="simulate-tip">💡 Press the Jump button to hop the frog forward!</div>
 
-      {/* Number line */}
       <div style={{ margin: '24px auto', maxWidth: 700, overflow: 'auto', padding: '40px 16px 16px', position: 'relative' }}>
-        {/* Frog */}
         <div style={{
           position: 'absolute',
           left: `${(frogPos / lineMax) * 100}%`,
@@ -402,10 +470,10 @@ function Station4({ audioEnabled, onComplete }) {
             ? <button className="btn btn-outline btn-sm" onClick={nextSc} style={{ marginTop: 12 }}>Try Another →</button>
             : (
               <>
-                <button className="btn btn-green btn-lg" onClick={onComplete} style={{ marginTop: 12, animation: 'bounceIn 0.5s ease' }}>
+                <button className="btn btn-green btn-lg" onClick={handleComplete} style={{ marginTop: 12, animation: 'bounceIn 0.5s ease' }}>
                   🎉 Complete Simulation!
                 </button>
-                <button className="skip-link" onClick={onComplete} style={{ marginTop: 8, display: 'block', margin: '8px auto 0' }}>
+                <button className="skip-link" onClick={handleComplete} style={{ marginTop: 8, display: 'block', margin: '8px auto 0' }}>
                   Skip →
                 </button>
               </>
@@ -414,7 +482,7 @@ function Station4({ audioEnabled, onComplete }) {
         </div>
       )}
       {!done && (
-        <button className="skip-link" onClick={onComplete} style={{ marginTop: 12, display: 'block', margin: '12px auto 0' }}>
+        <button className="skip-link" onClick={handleComplete} style={{ marginTop: 12, display: 'block', margin: '12px auto 0' }}>
           Skip →
         </button>
       )}

@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import { speak } from '../utils/audio';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { narrate, stopNarration } from '../utils/audio';
+import { getStoryNarration } from '../utils/narration';
 
 const STORY_SLIDES = [
   {
     image: '/images/story_problem.png',
-    title: "Mia's Apple Problem", text: 'One morning, Mia brought 6 red apples to school. Her friend Raju gave her 4 more green apples. Mia looked at all her apples and wondered...',
+    title: "Mia's Apple Problem",
+    text: 'One morning, Mia brought 6 red apples to school. Her friend Raju gave her 4 more green apples. Mia looked at all her apples and wondered...',
     highlight: '"How many apples do I have altogether?"',
     mascotText: "Let's help Mia! 🍎",
   },
@@ -36,6 +38,7 @@ export default function StoryPhase({ onComplete, audioEnabled }) {
   const [anim, setAnim] = useState(false);
   const [textVis, setTextVis] = useState(false);
   const [hlVis, setHlVis] = useState(false);
+  const narrationRef = useRef(null);
   const s = STORY_SLIDES[slide];
   const isLast = slide === STORY_SLIDES.length - 1;
   const pct = ((slide + 1) / STORY_SLIDES.length) * 100;
@@ -48,17 +51,25 @@ export default function StoryPhase({ onComplete, audioEnabled }) {
   }, [slide]);
 
   useEffect(() => {
-    if (textVis && audioEnabled) speak(s.text, true);
-  }, [textVis, s.text, audioEnabled]);
+    if (textVis && audioEnabled) {
+      narrationRef.current?.cancel();
+      narrationRef.current = narrate(getStoryNarration(slide), true);
+    }
+    return () => { narrationRef.current?.cancel(); };
+  }, [textVis, slide, audioEnabled]);
 
   const goNext = useCallback(() => {
     if (anim) return;
+    narrationRef.current?.cancel();
+    stopNarration();
     setAnim(true);
     setTimeout(() => { isLast ? onComplete() : setSlide(i => i + 1); setAnim(false); }, 400);
   }, [anim, isLast, onComplete]);
 
   const goPrev = useCallback(() => {
     if (anim || slide === 0) return;
+    narrationRef.current?.cancel();
+    stopNarration();
     setAnim(true);
     setTimeout(() => { setSlide(i => i - 1); setAnim(false); }, 400);
   }, [anim, slide]);
