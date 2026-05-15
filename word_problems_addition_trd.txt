@@ -1,0 +1,1117 @@
+Technical Requirements Document (TRD)
+Word Problems Using Addition — Grade 1 Math (Lesson 2.5)
+Intellia SG | Singapore Primary Mathematics Curriculum
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. TECHNICAL OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This document specifies the technical architecture, component design, data models,
+simulation specifications, and implementation standards for the "Word Problems Using
+Addition" interactive lesson module (Lesson 2.5) for Intellia SG's Grade 1 Math program.
+
+The module is a single-file React application (JSX artifact/component), designed to be
+embedded into the Intellia SG WordPress platform. It follows the identical visual theme,
+section architecture, gamification structure, and UX patterns established at
+https://readingnumbers.vercel.app/ (Lesson 1.2 — Reading and Writing Numbers).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. TECHNOLOGY STACK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Layer               | Technology                | Rationale
+--------------------|---------------------------|----------------------------------
+UI Framework        | React 18 (JSX)            | Component-based, hooks support
+State Management    | React useState/useReducer  | Sufficient for module complexity
+Styling             | Tailwind CSS (core utils)  | Available in artifact environment
+Icons               | Lucide React              | Available via CDN
+Animation           | CSS transitions + keyframes| No external dependency needed
+Persistence         | localStorage              | Session state, no backend needed
+Audio               | Web Speech API            | Browser-native, no server needed
+Math                | Vanilla JS                | No library needed for addition
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. APPLICATION ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 Component Hierarchy
+------------------------
+
+<App>
+├── <IntroScreen />                    # Welcome screen with mascot + lesson preview
+├── <ProgressMap />                    # Persistent top-level journey tracker
+│
+├── <LearningPhase>                    # Phase 1: Simulations
+│   ├── <Station1_StoryScene />        # Animated story: combine object groups
+│   ├── <Station2_DragCombine />       # Drag objects to merge sets, number bond fills
+│   ├── <Station3_BarModel />          # Build part-whole bar model interactively
+│   └── <Station4_NumberLine />        # Frog-jump number line simulation
+│
+├── <PracticePhase>                    # Phase 2: Guided practice (10 questions)
+│   ├── <QuestionRenderer />           # Polymorphic — renders any of 10 question types
+│   ├── <VisualAid />                  # Story illustration / bar model / number bond
+│   ├── <HintSystem />                 # Graduated 2-level hint system
+│   └── <FeedbackOverlay />           # Correct / incorrect animation overlay
+│
+├── <ChallengePhase>                   # Phase 3: Gamified quiz (100 questions × sets of 10)
+│   ├── <QuestionBank />               # Stores and serves randomised question pool
+│   ├── <QuestionRenderer />           # Reused from PracticePhase
+│   ├── <VisualAid />                  # Reused from PracticePhase
+│   ├── <ScoreTracker />              # XP, stars, streak counter
+│   ├── <BadgeSystem />               # Achievement unlock logic + display
+│   ├── <Mascot />                    # Animated character with mood states
+│   └── <RoundResults />              # Per-round star rating + XP summary
+│
+└── <ResultsScreen />                  # Final score, all badges earned, replay option
+
+3.2 Global State Architecture
+-------------------------------
+
+javascript
+const initialState = {
+  // Navigation
+  phase: 'intro',                  // 'intro' | 'learn' | 'practice' | 'challenge' | 'results'
+  currentStation: 0,               // 0–3 for learning stations
+
+  // Learning phase
+  learningComplete: false,
+  stationsCompleted: [false, false, false, false],
+
+  // Practice phase
+  practiceQuestions: [],           // 10 scaffolded questions (slice from bank)
+  practiceIndex: 0,
+  practiceScore: 0,
+  practiceHintsUsed: 0,
+
+  // Challenge phase
+  challengeQuestions: [],          // 100 randomised questions (full bank shuffled)
+  challengeIndex: 0,
+  challengeRound: 0,               // Current round 1–10 (10 questions each)
+  challengeScore: 0,
+  challengeXP: 0,
+  challengeStreak: 0,
+  maxStreak: 0,
+  hintsUsedTotal: 0,
+  roundResults: [],                // [{round, score, stars, xp}] array for all 10 rounds
+
+  // Rewards
+  badges: [],                      // Array of unlocked badge IDs
+  totalStars: 0,
+
+  // Settings
+  audioEnabled: true,
+  timerEnabled: false,             // Optional timer mode (challenge only)
+
+  // Persistence
+  sessionId: generateUUID(),
+  sessionStartTime: Date.now(),
+};
+
+3.3 Reducer Action Types
+-------------------------
+
+javascript
+const ACTIONS = {
+  SET_PHASE: 'SET_PHASE',
+  COMPLETE_STATION: 'COMPLETE_STATION',
+  SET_PRACTICE_QUESTIONS: 'SET_PRACTICE_QUESTIONS',
+  ADVANCE_PRACTICE: 'ADVANCE_PRACTICE',
+  RECORD_PRACTICE_SCORE: 'RECORD_PRACTICE_SCORE',
+  SET_CHALLENGE_QUESTIONS: 'SET_CHALLENGE_QUESTIONS',
+  ADVANCE_CHALLENGE: 'ADVANCE_CHALLENGE',
+  RECORD_CHALLENGE_SCORE: 'RECORD_CHALLENGE_SCORE',
+  UPDATE_XP: 'UPDATE_XP',
+  UPDATE_STREAK: 'UPDATE_STREAK',
+  UNLOCK_BADGE: 'UNLOCK_BADGE',
+  USE_HINT: 'USE_HINT',
+  TOGGLE_AUDIO: 'TOGGLE_AUDIO',
+  LOAD_PERSISTED_STATE: 'LOAD_PERSISTED_STATE',
+  RESET_SESSION: 'RESET_SESSION',
+};
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. QUESTION BANK DATA MODEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1 Question Schema
+--------------------
+
+typescript
+interface WordProblemQuestion {
+  id: string;                        // e.g. "WP_Q1_001" (type + index)
+  type: WordProblemQuestionType;     // Enum: 10 types (Q1–Q10)
+  phase: 'practice' | 'challenge';
+  difficulty: 1 | 2 | 3;            // 1 = easy, 2 = medium, 3 = hard
+  numberRange: 'within10' | 'within20' | 'within100';
+
+  // Problem content
+  questionText: string;              // Full word problem text (≤25 words)
+  subjectName?: string;              // Singapore context name (Mia, Raju, etc.)
+  setting?: string;                  // Context: playground, classroom, hawker etc.
+  emoji?: string;                    // Object emoji for visual reinforcement (🍎, 🐟 etc.)
+
+  // Visual model
+  visualType: VisualType;            // 'story_scene' | 'number_bond' | 'bar_model' | 'number_line'
+  part1: number;                     // First addend (Part A)
+  part2: number;                     // Second addend (Part B)
+  whole: number;                     // Sum / answer (Whole)
+  equation: string;                  // e.g. "6 + 4 = 10"
+
+  // Answer choices
+  options: string[];                 // 4 MCQ options (strings, includes correct)
+  correctAnswer: string;             // Must be one of options[]
+
+  // Hints (graduated)
+  hint1: string;                     // Keyword highlight instruction
+  hint2: string;                     // Bar model scaffold description
+  explanation: string;               // Full step-by-step shown after 2 wrong attempts
+
+  // Metadata
+  singaporeContext: boolean;         // Whether question uses SG names/settings
+  keyWords: string[];                // Addition signal words: "altogether", "total" etc.
+}
+
+type WordProblemQuestionType =
+  | 'simple_altogether'              // Q1: Two groups → find total within 20
+  | 'how_many_in_all'               // Q2: Count two sets → sum within 20
+  | 'one_digit_plus_one_digit'      // Q3: Simple 1d+1d in context within 10
+  | 'one_digit_plus_two_digit'      // Q4: Mixed digits within 100
+  | 'two_digit_plus_one_digit'      // Q5: Reverse mixed digits within 100
+  | 'join_receive_more'             // Q6: Someone receives more → within 20
+  | 'total_cost'                    // Q7: Adding amounts in cents within 100
+  | 'combined_lengths'              // Q8: Adding measurement values within 20
+  | 'number_bond_missing_part'      // Q9: Find missing part given whole within 20
+  | 'two_sentence_story';           // Q10: Multi-sentence, equation writing, within 100
+
+type VisualType = 'story_scene' | 'number_bond' | 'bar_model' | 'number_line' | 'mixed';
+
+4.2 Sample Data Records
+------------------------
+
+javascript
+const SAMPLE_QUESTIONS = [
+  {
+    id: 'WP_Q1_001',
+    type: 'simple_altogether',
+    difficulty: 1,
+    numberRange: 'within20',
+    questionText: 'Mia has 6 red fish. She gets 4 more blue fish. How many fish does she have altogether?',
+    subjectName: 'Mia',
+    setting: 'home',
+    emoji: '🐟',
+    visualType: 'number_bond',
+    part1: 6, part2: 4, whole: 10,
+    equation: '6 + 4 = 10',
+    options: ['9', '10', '11', '8'],
+    correctAnswer: '10',
+    hint1: 'Look for the word "altogether" — it tells you to ADD!',
+    hint2: 'Fill in the number bond: 6 + 4 = ?',
+    explanation: 'Mia has 6 fish. She gets 4 more. 6 + 4 = 10. Mia has 10 fish altogether.',
+    singaporeContext: true,
+    keyWords: ['altogether'],
+  },
+  {
+    id: 'WP_Q4_001',
+    type: 'one_digit_plus_two_digit',
+    difficulty: 2,
+    numberRange: 'within100',
+    questionText: 'Ahmad has 14 marbles. His friend gives him 5 more. How many marbles does Ahmad have now?',
+    subjectName: 'Ahmad',
+    setting: 'playground',
+    emoji: '🔮',
+    visualType: 'bar_model',
+    part1: 14, part2: 5, whole: 19,
+    equation: '14 + 5 = 19',
+    options: ['18', '19', '20', '21'],
+    correctAnswer: '19',
+    hint1: 'The word "more" tells you to ADD.',
+    hint2: 'Bar model: [14] + [5] = [?]. Start at 14, count on 5.',
+    explanation: 'Ahmad has 14 marbles. He gets 5 more. 14 + 5 = 19. Ahmad now has 19 marbles.',
+    singaporeContext: true,
+    keyWords: ['more', 'how many'],
+  },
+];
+
+4.3 Full Question Bank Distribution
+-------------------------------------
+
+Type                      | IDs          | Count | Difficulty     | Range
+--------------------------|--------------|-------|----------------|----------
+simple_altogether         | WP_Q1_001–10 |  10   | 4e / 4m / 2h   | Within 20
+how_many_in_all           | WP_Q2_001–10 |  10   | 4e / 3m / 3h   | Within 20
+one_digit_plus_one_digit  | WP_Q3_001–10 |  10   | 5e / 3m / 2h   | Within 10
+one_digit_plus_two_digit  | WP_Q4_001–10 |  10   | 3e / 4m / 3h   | Within 100
+two_digit_plus_one_digit  | WP_Q5_001–10 |  10   | 3e / 4m / 3h   | Within 100
+join_receive_more         | WP_Q6_001–10 |  10   | 4e / 4m / 2h   | Within 20
+total_cost                | WP_Q7_001–10 |  10   | 3e / 4m / 3h   | Within 100
+combined_lengths          | WP_Q8_001–10 |  10   | 4e / 4m / 2h   | Within 20
+number_bond_missing_part  | WP_Q9_001–10 |  10   | 3e / 4m / 3h   | Within 20
+two_sentence_story        | WP_Q10_001–10|  10   | 2e / 4m / 4h   | Within 100
+TOTAL                     |              | 100   | 35e / 38m / 27h|
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. RANDOMISATION ENGINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 Question Shuffling Algorithm (Fisher-Yates)
+------------------------------------------------
+
+javascript
+function shuffleQuestions(bank) {
+  const shuffled = [...bank];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function buildChallengeSet(fullBank) {
+  // Ensure minimum 1 question from each type in every session
+  const byType = {};
+  fullBank.forEach(q => {
+    if (!byType[q.type]) byType[q.type] = [];
+    byType[q.type].push(q);
+  });
+
+  const guaranteed = Object.values(byType).map(arr => {
+    const sh = shuffleQuestions(arr);
+    return sh[0]; // One from each type guaranteed
+  });
+
+  const remaining = fullBank.filter(q => !guaranteed.find(g => g.id === q.id));
+  const shuffledRemaining = shuffleQuestions(remaining).slice(0, 90);
+
+  return shuffleQuestions([...guaranteed, ...shuffledRemaining]);
+}
+
+5.2 MCQ Option Generation
+--------------------------
+
+javascript
+function generateOptions(correctAnswer, part1, part2, numberRange) {
+  const correct = parseInt(correctAnswer);
+  const distractors = new Set();
+  
+  // Plausible wrong answers: near-miss values
+  const candidates = [
+    correct - 1,                   // Off-by-one (very common child error)
+    correct + 1,                   // Off-by-one
+    part1 + part2 - 1,             // Computation error
+    Math.max(part1, part2),        // Chose largest part instead of whole
+  ].filter(d => d > 0 && d !== correct);
+
+  candidates.forEach(c => {
+    if (distractors.size < 3) distractors.add(String(c));
+  });
+
+  // Fill remaining slots if needed
+  while (distractors.size < 3) {
+    const offset = Math.ceil(Math.random() * 3) * (Math.random() > 0.5 ? 1 : -1);
+    const d = correct + offset;
+    if (d > 0 && d !== correct) distractors.add(String(d));
+  }
+
+  const all = shuffleQuestions([correctAnswer, ...[...distractors]]);
+  return all.slice(0, 4);
+}
+
+5.3 Session Seeding & Resume
+------------------------------
+
+javascript
+function generateSessionSeed() {
+  return Math.random().toString(36).substring(2, 11);
+}
+
+// On load: check if saved session within 24 hours
+function initSession(dispatch) {
+  const saved = loadPersistedState();
+  if (saved && (Date.now() - saved.timestamp) < 86400000) {
+    dispatch({ type: ACTIONS.LOAD_PERSISTED_STATE, payload: saved });
+  } else {
+    const questions = buildChallengeSet(QUESTION_BANK);
+    dispatch({ type: ACTIONS.SET_CHALLENGE_QUESTIONS, payload: questions });
+  }
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. SIMULATION COMPONENT SPECIFICATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6.1 Station 1 — Story Scene Simulation
+----------------------------------------
+Purpose: Build intuition for "combining two groups"
+
+State:
+  const [part1, setPart1] = useState(0);        // Objects in group 1 (shown)
+  const [part2, setPart2] = useState(0);        // Objects in group 2 (shown)
+  const [combined, setCombined] = useState(false); // Whether merge animation played
+
+Visual Layout:
+  ┌──────────────────────────────────────────┐
+  │  🎨 Scene Background (playground/class)  │
+  │                                          │
+  │  [Group A: 4 🍎]   +  [Group B: 3 🍎]   │
+  │                    ↓                     │
+  │        [Combined: ? 🍎]                  │
+  │                                          │
+  │  Number Bond: [4] + [3] = [?]           │
+  │  "Click to combine!" button              │
+  └──────────────────────────────────────────┘
+
+Animation Sequence:
+  1. Part A objects render (staggered fade-in, 100ms per item)
+  2. Part B objects render (staggered fade-in)
+  3. User clicks "Combine!" → Part B objects fly to Part A group (CSS translateX)
+  4. Number bond fills: [part1] + [part2] = [answer bubble pulses]
+  5. Mascot: "They make [whole] altogether! 🎉"
+
+Interaction: "Next Story" button cycles through 3 built-in story scenarios
+
+6.2 Station 2 — Drag and Combine Simulation
+---------------------------------------------
+Purpose: Hands-on physical combining with number bond feedback
+
+State:
+  const [group1Items, setGroup1Items] = useState([]);   // Items in left zone
+  const [group2Items, setGroup2Items] = useState([]);   // Items in right zone
+  const [mergedItems, setMergedItems] = useState([]);   // Items in merge zone
+  const [numberBond, setNumberBond] = useState({ part1: 0, part2: 0, whole: 0 });
+
+Visual Layout:
+  ┌─────────────┐  +  ┌─────────────┐  =  ┌─────────────┐
+  │  Group A    │     │  Group B    │     │  Combined   │
+  │  [drag]     │     │  [drag]     │     │  [drop]     │
+  │  🍎🍎🍎    │     │  🍎🍎      │     │             │
+  └─────────────┘     └─────────────┘     └─────────────┘
+  
+  Number Bond: [3] + [2] = [__] ← updates as items dropped
+
+Technical Implementation:
+  - Uses onDragStart / onDrop / onDragOver HTML5 drag events
+  - Each item is a <div draggable={true}> with itemId in dataTransfer
+  - Merge zone onDrop: move item from source to merged array
+  - numberBond.whole auto-calculates: group1.length + group2.length
+
+Touch Support (for iPad):
+  - Touch events: onTouchStart / onTouchMove / onTouchEnd
+  - elementFromPoint() used to detect drop target on touch end
+
+6.3 Station 3 — Bar Model Builder Simulation
+----------------------------------------------
+Purpose: Teach the visual part-whole (bar model) representation
+
+State:
+  const [part1Value, setPart1Value] = useState(null);   // Assigned part A number
+  const [part2Value, setPart2Value] = useState(null);   // Assigned part B number
+  const [wholeRevealed, setWholeRevealed] = useState(false);
+
+Visual Layout:
+  ┌──────────────────────────────────────┐
+  │  WHOLE: [            ?            ]  │
+  │  PARTS: [ Part A: ? ] [ Part B: ? ] │
+  └──────────────────────────────────────┘
+
+  Word Problem: "Lin has 8 pencils. She gets 5 more."
+  Number cards: [8] [5] [13] [3] (one correct per slot)
+
+  Student drags number cards into Part A and Part B slots
+  → Whole auto-calculates and reveals with animation
+  → Equation: "8 + 5 = 13" appears below
+
+Validation:
+  - Only allows numbers from the displayed word problem to be placed in part slots
+  - Wrong placement: card bounces back with shake animation
+  - Correct placement: slot glows green, Whole value reveals with bounce-in
+
+6.4 Station 4 — Frog Jump Number Line Simulation
+--------------------------------------------------
+Purpose: Model counting-on strategy using a number line
+
+State:
+  const [startNumber, setStartNumber] = useState(6);   // Starting position
+  const [jumpCount, setJumpCount] = useState(0);        // How many jumps made
+  const [targetJumps, setTargetJumps] = useState(5);   // Part 2 of the problem
+  const [frogPos, setFrogPos] = useState(6);            // Current frog position
+
+Visual Layout:
+  0──1──2──3──4──5──6──7──8──9──10──11──12──13──14──15──16──17──18──19──20
+                       🐸
+  
+  Problem: "Start at 6. Jump 5 more times. Where do you land?"
+  [+ Jump] button  |  Reset button  |  Current position label
+
+Animation: Frog hops one number at a time (translateX + translateY arc)
+           Each hop plays a soft "boing" tone
+
+Completion: When frogPos === startNumber + targetJumps:
+  - Frog does happy dance animation (rotate ± keyframe)
+  - Equation appears: "6 + 5 = 11"
+  - Mascot: "You landed on 11! Great jumping! 🐸"
+
+3 Built-in Scenarios (cycle through with "Try Another" button):
+  Scenario 1: Start=6, jumps=5, answer=11
+  Scenario 2: Start=8, jumps=7, answer=15
+  Scenario 3: Start=13, jumps=6, answer=19
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. VISUAL AID COMPONENT SPECIFICATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7.1 NumberBond Component
+-------------------------
+
+jsx
+const NumberBond = ({ part1, part2, whole, revealWhole = false }) => (
+  <div className="number-bond" style={{ position: 'relative', width: 200, margin: 'auto' }}>
+    {/* Whole circle — top */}
+    <div className="bond-circle whole" style={{ top: 0, left: '50%' }}>
+      {revealWhole ? whole : '?'}
+    </div>
+    {/* Lines to parts */}
+    <svg className="bond-lines" viewBox="0 0 200 80">
+      <line x1="100" y1="30" x2="50" y2="70" stroke="#ccc" strokeWidth="2" />
+      <line x1="100" y1="30" x2="150" y2="70" stroke="#ccc" strokeWidth="2" />
+    </svg>
+    {/* Part circles — bottom */}
+    <div className="bond-circle part" style={{ bottom: 0, left: '20%' }}>{part1}</div>
+    <div className="bond-circle part" style={{ bottom: 0, right: '20%' }}>{part2}</div>
+  </div>
+);
+
+7.2 BarModel Component
+-----------------------
+
+jsx
+const BarModel = ({ part1, part2, whole, showWhole = false, showParts = true }) => (
+  <div className="bar-model">
+    {/* Whole bar (top) */}
+    <div className="bar-row whole-row">
+      <span className="bar-label">Whole</span>
+      <div className="bar whole-bar">
+        <span>{showWhole ? whole : '?'}</span>
+      </div>
+    </div>
+    {/* Parts bar (bottom) */}
+    {showParts && (
+      <div className="bar-row parts-row">
+        <span className="bar-label">Parts</span>
+        <div className="bar part-bar" style={{ flex: part1 }}>
+          <span>{part1}</span>
+        </div>
+        <div className="bar part-bar" style={{ flex: part2 }}>
+          <span>{part2}</span>
+        </div>
+      </div>
+    )}
+    {/* Equation */}
+    {showWhole && (
+      <div className="equation-display">
+        {part1} + {part2} = {whole}
+      </div>
+    )}
+  </div>
+);
+
+7.3 StoryIllustration Component
+--------------------------------
+
+jsx
+const StoryIllustration = ({ emoji, part1, part2, combined }) => (
+  <div className="story-scene">
+    <div className="group-a">
+      {Array.from({ length: part1 }).map((_, i) => (
+        <span key={i} className="story-emoji"
+          style={{ animationDelay: `${i * 100}ms` }}>
+          {emoji}
+        </span>
+      ))}
+    </div>
+    <div className="plus-sign">+</div>
+    <div className="group-b">
+      {Array.from({ length: part2 }).map((_, i) => (
+        <span key={i}
+          className={`story-emoji ${combined ? 'fly-left' : ''}`}
+          style={{ animationDelay: `${i * 100}ms` }}>
+          {emoji}
+        </span>
+      ))}
+    </div>
+  </div>
+);
+
+7.4 VisualAid Switcher
+------------------------
+
+jsx
+const VisualAid = ({ question, hintLevel }) => {
+  const { visualType, part1, part2, whole, emoji } = question;
+
+  if (visualType === 'number_bond')
+    return <NumberBond part1={part1} part2={part2} whole={whole}
+             revealWhole={hintLevel >= 2} />;
+
+  if (visualType === 'bar_model')
+    return <BarModel part1={part1} part2={part2} whole={whole}
+             showWhole={hintLevel >= 2} />;
+
+  if (visualType === 'story_scene')
+    return <StoryIllustration emoji={emoji} part1={part1} part2={part2}
+             combined={hintLevel >= 1} />;
+
+  if (visualType === 'number_line')
+    return <MiniNumberLine start={part1} jumps={part2} answer={whole}
+             show={hintLevel >= 1} />;
+
+  return null;
+};
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. QUESTION RENDERER COMPONENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+jsx
+const QuestionRenderer = ({ question, onAnswer, hintLevel, phase }) => {
+  const { questionText, options, correctAnswer, keyWords } = question;
+
+  // Highlight key addition words in the question text
+  const highlightedText = keyWords.reduce((text, word) => {
+    return text.replace(
+      new RegExp(`(${word})`, 'gi'),
+      `<mark class="keyword-highlight">$1</mark>`
+    );
+  }, questionText);
+
+  return (
+    <div className="question-card">
+      {/* Mascot thought bubble */}
+      <Mascot mood="thinking" />
+
+      {/* Question text with keyword highlights */}
+      <div
+        className="question-text"
+        dangerouslySetInnerHTML={{ __html: hintLevel >= 1 ? highlightedText : questionText }}
+      />
+
+      {/* Visual Aid (switches based on hint level) */}
+      <VisualAid question={question} hintLevel={hintLevel} />
+
+      {/* MCQ Answer Options */}
+      <div className="options-grid">
+        {options.map((opt, idx) => (
+          <button
+            key={idx}
+            className="option-btn"
+            onClick={() => onAnswer(opt)}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+
+      {/* Read Aloud button */}
+      <button className="read-aloud-btn" onClick={() => speak(questionText)}>
+        🔊 Read to me
+      </button>
+    </div>
+  );
+};
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. HINT SYSTEM IMPLEMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+javascript
+// Hint levels: 0 = no hint, 1 = keyword highlight, 2 = bar model scaffold, 3 = reveal answer
+const useHintSystem = (question) => {
+  const [hintLevel, setHintLevel] = useState(0);
+  const [attemptsOnQuestion, setAttemptsOnQuestion] = useState(0);
+
+  const onWrongAnswer = () => {
+    const next = attemptsOnQuestion + 1;
+    setAttemptsOnQuestion(next);
+
+    if (next === 1) {
+      setHintLevel(1);            // Show keyword highlight
+      speak(question.hint1);
+    } else if (next === 2) {
+      setHintLevel(2);            // Show bar model scaffold
+      speak(question.hint2);
+    } else if (next >= 3) {
+      setHintLevel(3);            // Reveal answer + explanation
+      speak(question.explanation);
+    }
+  };
+
+  const resetHints = () => {
+    setHintLevel(0);
+    setAttemptsOnQuestion(0);
+  };
+
+  return { hintLevel, onWrongAnswer, resetHints };
+};
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. GAMIFICATION IMPLEMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+10.1 XP Calculation
+--------------------
+
+javascript
+const XP_VALUES = {
+  correctFirstTry: 10,
+  correctSecondTry: 7,
+  correctWithHint: 5,
+  streakBonusThreshold: 5,
+  streakBonusAmount: 5,
+};
+
+function calculateXP(attemptNumber, hintsUsed, currentStreak) {
+  let base;
+  if (attemptNumber === 1) base = XP_VALUES.correctFirstTry;
+  else if (hintsUsed === 0) base = XP_VALUES.correctSecondTry;
+  else base = XP_VALUES.correctWithHint;
+
+  const streakBonus = currentStreak >= XP_VALUES.streakBonusThreshold
+    ? XP_VALUES.streakBonusAmount : 0;
+
+  return base + streakBonus;
+}
+
+10.2 Star Rating Per Round (10 questions)
+------------------------------------------
+
+javascript
+function calculateStars(correctCount) {
+  if (correctCount >= 9) return 3;    // Gold: 90–100%
+  if (correctCount >= 7) return 2;    // Silver: 70–89%
+  if (correctCount >= 5) return 1;    // Bronze: 50–69%
+  return 0;                            // Try again: below 50%
+}
+
+10.3 Badge Definitions & Unlock Conditions
+-------------------------------------------
+
+javascript
+const BADGES = [
+  {
+    id: 'story_starter',
+    label: '📖 Story Starter',
+    description: 'Complete all 4 Learning Stations',
+    condition: (s) => s.stationsCompleted.every(Boolean),
+  },
+  {
+    id: 'problem_solver',
+    label: '✏️ Problem Solver',
+    description: 'Answer 10 Practice questions',
+    condition: (s) => s.practiceIndex >= 10,
+  },
+  {
+    id: 'addition_ace',
+    label: '🥇 Addition Ace',
+    description: 'Score 80% or more in the Challenge phase',
+    condition: (s) => (s.challengeScore / 100) >= 0.8,
+  },
+  {
+    id: 'model_master',
+    label: '💎 Model Master',
+    description: 'Complete 10 bar model questions correctly',
+    condition: (s) => s.barModelCorrect >= 10,
+  },
+  {
+    id: 'hot_streak',
+    label: '🔥 Hot Streak!',
+    description: '10 consecutive correct answers',
+    condition: (s) => s.maxStreak >= 10,
+  },
+  {
+    id: 'perfect_100',
+    label: '🌟 Perfect 100',
+    description: 'Score 100 out of 100 in the Challenge',
+    condition: (s) => s.challengeScore === 100,
+  },
+  {
+    id: 'number_line_hero',
+    label: '🐸 Number Line Hero',
+    description: 'Complete all number line simulations',
+    condition: (s) => s.numberLineSimulationsCompleted >= 3,
+  },
+];
+
+function checkAndUnlockBadges(state, dispatch) {
+  BADGES.forEach(badge => {
+    if (!state.badges.includes(badge.id) && badge.condition(state)) {
+      dispatch({ type: ACTIONS.UNLOCK_BADGE, payload: badge.id });
+      speak(`You unlocked the ${badge.label} badge! Well done!`);
+    }
+  });
+}
+
+10.4 Mascot Component
+----------------------
+
+jsx
+const MASCOT_MOODS = {
+  idle:       { emoji: '🐵', message: 'Let\'s solve some word problems!' },
+  thinking:   { emoji: '🤔', message: 'Read the problem carefully...' },
+  happy:      { emoji: '😄', message: 'That\'s correct! Amazing work!' },
+  celebrate:  { emoji: '🥳', message: 'You\'re a maths superstar! 🌟' },
+  hint:       { emoji: '💡', message: 'Here\'s a little hint for you...' },
+  explain:    { emoji: '📚', message: 'Let me show you how to solve this.' },
+};
+
+const Mascot = ({ mood }) => {
+  const { emoji, message } = MASCOT_MOODS[mood] || MASCOT_MOODS.idle;
+  return (
+    <div className={`mascot mascot--${mood}`}>
+      <span className="mascot-emoji">{emoji}</span>
+      <div className="speech-bubble">{message}</div>
+    </div>
+  );
+};
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. AUDIO IMPLEMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+11.1 Web Speech API Integration
+---------------------------------
+
+javascript
+function speak(text, onEnd = null) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();                    // Stop any current speech
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.85;                              // Slower — age-appropriate
+  utterance.pitch = 1.1;                              // Slightly higher pitch
+  utterance.lang = 'en-SG';                           // Singapore English locale
+
+  if (onEnd) utterance.onend = onEnd;
+
+  window.speechSynthesis.speak(utterance);
+}
+
+// Read question with key words emphasised
+function speakQuestion(question) {
+  speak(question.questionText);
+}
+
+// Read hint
+function speakHint(hintText) {
+  speak(`Hint: ${hintText}`);
+}
+
+// Read explanation
+function speakExplanation(explanationText) {
+  speak(`Here is the explanation: ${explanationText}`);
+}
+
+11.2 Procedural Sound Effects (AudioContext)
+---------------------------------------------
+
+javascript
+function createTone(frequency, duration = 200, type = 'sine') {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+  gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);
+
+  osc.connect(gainNode);
+  gainNode.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + duration / 1000);
+}
+
+const SOUNDS = {
+  correct:    () => createTone(880, 200),                                    // High A
+  wrong:      () => createTone(220, 300),                                    // Low A
+  hint:       () => createTone(440, 150),                                    // Middle A
+  frogHop:    () => createTone(660, 100, 'triangle'),                       // Soft hop
+  badgeUnlock:() => [523, 659, 784].forEach((f, i) =>                       // C-E-G fanfare
+                setTimeout(() => createTone(f, 200), i * 200)),
+  levelUp:    () => [392, 494, 587, 784].forEach((f, i) =>                  // G-B-D-G ascend
+                setTimeout(() => createTone(f, 180), i * 180)),
+};
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. PERSISTENCE & STORAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+javascript
+const STORAGE_KEY = 'intellia_word_problems_addition_v1';
+
+const saveProgress = (state) => {
+  try {
+    const toSave = {
+      phase: state.phase,
+      currentStation: state.currentStation,
+      stationsCompleted: state.stationsCompleted,
+      learningComplete: state.learningComplete,
+      practiceIndex: state.practiceIndex,
+      practiceScore: state.practiceScore,
+      challengeIndex: state.challengeIndex,
+      challengeScore: state.challengeScore,
+      challengeXP: state.challengeXP,
+      maxStreak: state.maxStreak,
+      badges: state.badges,
+      totalStars: state.totalStars,
+      roundResults: state.roundResults,
+      sessionId: state.sessionId,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch (e) {
+    console.warn('Progress save failed:', e);
+  }
+};
+
+const loadPersistedState = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    const AGE_LIMIT = 24 * 60 * 60 * 1000; // 24 hours
+    if (Date.now() - data.timestamp > AGE_LIMIT) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return data;
+  } catch (e) {
+    return null;
+  }
+};
+
+const clearProgress = () => {
+  localStorage.removeItem(STORAGE_KEY);
+};
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+13. CSS ANIMATION KEYFRAMES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+css
+
+/* --- Entry Animations --- */
+@keyframes bounceIn {
+  0%   { transform: scale(0.3); opacity: 0; }
+  50%  { transform: scale(1.05); }
+  70%  { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeSlideUp {
+  0%   { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* --- Feedback Animations --- */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-6px); }
+  80%       { transform: translateX(6px); }
+}
+
+@keyframes celebrate {
+  0%   { transform: rotate(0deg) scale(1); }
+  25%  { transform: rotate(-15deg) scale(1.15); }
+  75%  { transform: rotate(15deg) scale(1.15); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+@keyframes floatUp {
+  0%   { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-60px); opacity: 0; }
+}
+
+/* --- Object Animations (Story Scene) --- */
+@keyframes flyLeft {
+  0%   { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(-120px); opacity: 0.8; }
+}
+
+@keyframes popIn {
+  0%   { transform: scale(0); }
+  80%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* --- Frog Jump (Number Line) --- */
+@keyframes frogJump {
+  0%   { transform: translateX(0) translateY(0); }
+  50%  { transform: translateX(var(--jump-x)) translateY(-30px); }
+  100% { transform: translateX(var(--jump-x)) translateY(0); }
+}
+
+/* --- Bar Model Animation --- */
+@keyframes barGrow {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+/* --- Badge Unlock --- */
+@keyframes badgeReveal {
+  0%   { transform: scale(0) rotate(-180deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(10deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* --- Streak Counter --- */
+@keyframes streakPulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.3); }
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. PERFORMANCE REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Metric                | Target
+----------------------|------------------
+Initial load time     | < 2 seconds
+Time to first interact| < 1 second
+Animation frame rate  | 60 fps
+Memory usage          | < 50 MB
+Bundle size           | < 500 KB
+LocalStorage write    | < 5 ms per save
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+15. BROWSER & DEVICE SUPPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Environment              | Support Level
+-------------------------|---------------
+Chrome 110+              | Full
+Safari 15+ (iPad/iPhone) | Full
+Firefox 110+             | Full
+Edge 110+                | Full
+Android Chrome           | Full
+IE 11                    | Not supported
+
+Primary test device: iPad (9th/10th generation, Safari 15+)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+16. WORDPRESS EMBEDDING (Intellia SG)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Option A: React Component via CDN Script Tag
+---------------------------------------------
+
+html
+<div id="word-problems-addition-app"></div>
+<script src="https://cdn.intelliasg.com/lessons/word-problems-addition.js"></script>
+
+Option B: iFrame Embed
+-----------------------
+
+html
+<iframe
+  src="https://lessons.intelliasg.com/grade1/word-problems-addition"
+  width="100%"
+  height="780px"
+  frameborder="0"
+  allow="autoplay; microphone; speech-synthesis"
+  title="Word Problems Using Addition — Grade 1 Math"
+></iframe>
+
+Preferred: Option A for better performance and no cross-origin audio issues.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+17. FOLDER STRUCTURE (React Project)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+word-problems-addition/
+├── index.html
+├── vite.config.js
+├── package.json
+├── src/
+│   ├── main.jsx                        # React DOM render entry point
+│   ├── App.jsx                         # Root component, global state
+│   ├── data/
+│   │   └── questionBank.js             # All 100 questions (exported array)
+│   ├── components/
+│   │   ├── IntroScreen.jsx
+│   │   ├── ProgressMap.jsx
+│   │   ├── Mascot.jsx
+│   │   ├── learning/
+│   │   │   ├── Station1_StoryScene.jsx
+│   │   │   ├── Station2_DragCombine.jsx
+│   │   │   ├── Station3_BarModel.jsx
+│   │   │   └── Station4_NumberLine.jsx
+│   │   ├── shared/
+│   │   │   ├── NumberBond.jsx
+│   │   │   ├── BarModel.jsx
+│   │   │   ├── StoryIllustration.jsx
+│   │   │   ├── MiniNumberLine.jsx
+│   │   │   ├── VisualAid.jsx
+│   │   │   ├── QuestionRenderer.jsx
+│   │   │   ├── FeedbackOverlay.jsx
+│   │   │   └── HintSystem.jsx
+│   │   ├── practice/
+│   │   │   └── PracticePhase.jsx
+│   │   ├── challenge/
+│   │   │   ├── ChallengePhase.jsx
+│   │   │   ├── ScoreTracker.jsx
+│   │   │   ├── BadgeSystem.jsx
+│   │   │   └── RoundResults.jsx
+│   │   └── ResultsScreen.jsx
+│   ├── hooks/
+│   │   ├── useAudio.js                 # speak() + sound effect hooks
+│   │   ├── useHintSystem.js            # Hint state management
+│   │   ├── useGameState.js             # useReducer + dispatch wrapper
+│   │   └── usePersistence.js           # localStorage save/load
+│   └── styles/
+│       ├── index.css                   # Global styles + Tailwind imports
+│       └── animations.css              # All @keyframe definitions
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+18. QUALITY ASSURANCE CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Category                                            | Status
+----------------------------------------------------|-------
+All 100 questions render with correct text          | [ ]
+MCQ options always include the correct answer       | [ ]
+No duplicate options within any single question     | [ ]
+All addition answers are correct (part1+part2=whole)| [ ]
+Number bond renders correctly for all questions     | [ ]
+Bar model renders correctly (parts scale with value)| [ ]
+Frog number line simulation completes all 3 scenes  | [ ]
+Drag-and-combine works on iPad touch                | [ ]
+Hint Level 1 highlights correct keywords            | [ ]
+Hint Level 2 shows correct bar model scaffold       | [ ]
+Hint Level 3 shows correct explanation              | [ ]
+XP calculation correct for all attempt types        | [ ]
+Star rating correct (9-10=3, 7-8=2, 5-6=1, <5=0)  | [ ]
+All 7 badges unlock at correct conditions           | [ ]
+Streak counter resets correctly on wrong answer     | [ ]
+localStorage save/load within 24-hour window        | [ ]
+New session generates new shuffled question order   | [ ]
+Audio read-aloud works (Chrome + Safari)            | [ ]
+Sound effects play without overlap/lag              | [ ]
+Audio gracefully degrades if Web Speech unavailable | [ ]
+All animations run at 60fps (Chrome DevTools check) | [ ]
+Page loads in < 2 seconds on 4G connection          | [ ]
+Layout correct at 375px mobile width                | [ ]
+Layout correct at 768px tablet width                | [ ]
+Layout correct at 1280px desktop width              | [ ]
+Keyboard navigation functional throughout           | [ ]
+All images/emojis have alt text                     | [ ]
+WCAG AA contrast ratio met for all text             | [ ]
+WordPress embed renders without horizontal scroll   | [ ]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Document Version: 1.0 | May 2026 | Intellia SG — Grade 1 Math Program
+Lesson: 2.5 — Word Problems Using Addition
+Technical Lead: Intellia Engineering Team
+Curriculum Reference: Targeting Mathematics Primary 1A, Sections 3 & 8;
+                       Singapore MOE Primary 1 Mathematics Syllabus
