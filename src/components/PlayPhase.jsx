@@ -1,6 +1,7 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { generateQuestionBank } from '../utils/questionBank';
-import { speak, sounds } from '../utils/audio';
+import { narrate, stopNarration, sounds } from '../utils/audio';
+import { playWorldIntro, playReadQuestion, playCorrectNarration, playWrongNarration, playWorldComplete } from '../utils/narration';
 import QuestionRenderer from './QuestionRenderer';
 
 const WORLDS = [
@@ -36,6 +37,7 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
   const [answered, setAnswered] = useState(false);
   const [xpPopup, setXpPopup] = useState(null);
   const [worldComplete, setWorldComplete] = useState(false);
+  const narrationRef = useRef(null);
 
   const worldQuestions = useMemo(() => {
     if (currentWorld < 0) return [];
@@ -45,12 +47,16 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
 
   const q = worldQuestions[qIndex];
 
-  // Read word problem aloud when it appears
+  // Read word problem aloud with rich narration
   useEffect(() => {
     if (audioEnabled && q && !worldComplete && !feedback && currentWorld >= 0) {
-      // Small delay to let the question render first
-      const timer = setTimeout(() => speak(q.questionText, true), 300);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => {
+        narrationRef.current = narrate(playReadQuestion(q.questionText), true);
+      }, 300);
+      return () => {
+        clearTimeout(timer);
+        narrationRef.current?.cancel();
+      };
     }
   }, [qIndex, audioEnabled, q, worldComplete, feedback, currentWorld]);
 
@@ -58,7 +64,10 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
     setCurrentWorld(worldId);
     setQIndex(0); setScore(0); setLives(3); setStreak(0);
     setWorldComplete(false); setFeedback(null); setAnswered(false);
-    if (audioEnabled) speak(`Welcome to ${WORLDS[worldId].name}!`, true);
+    narrationRef.current?.cancel();
+    if (audioEnabled) {
+      narrationRef.current = narrate(playWorldIntro(WORLDS[worldId].name), true);
+    }
   }, [audioEnabled]);
 
   const finishWorld = useCallback(() => {
@@ -67,13 +76,21 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
     sounds.badge();
     setWorldResults(prev => ({ ...prev, [currentWorld]: { score, total: w.count, stars } }));
     setWorldComplete(true);
-  }, [currentWorld, score]);
+    narrationRef.current?.cancel();
+    if (audioEnabled) {
+      narrationRef.current = narrate(playWorldComplete(w.name, score, w.count), true);
+    }
+  }, [currentWorld, score, audioEnabled]);
 
   const backToMap = useCallback(() => {
+    narrationRef.current?.cancel();
+    stopNarration();
     setCurrentWorld(-1); setWorldComplete(false); setFeedback(null);
   }, []);
 
   const handleAllComplete = useCallback(() => {
+    narrationRef.current?.cancel();
+    stopNarration();
     const totalScore = Object.values(worldResults).reduce((a, r) => a + r.score, 0) + score;
     const totalQ = Object.values(worldResults).reduce((a, r) => a + r.total, 0) + (worldQuestions.length || 0);
     onComplete({
@@ -94,6 +111,7 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
 
   const handleAnswer = useCallback((isCorrect) => {
     setAnswered(true);
+    narrationRef.current?.cancel();
     if (isCorrect) {
       const ns = streak + 1;
       const earned = calcXP(1, ns);
@@ -105,15 +123,21 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
       setXpPopup(`+${earned} XP`);
       setTimeout(() => setXpPopup(null), 1500);
       setFeedback({ type: 'correct', message: ns >= 5 ? `🔥 ${ns} Streak!` : 'Correct! 🎉', sub: q.explanation });
+      if (audioEnabled) {
+        narrationRef.current = narrate(playCorrectNarration(ns), true);
+      }
       setTimeout(advance, 1800);
     } else {
       setStreak(0); setLives(l => l - 1);
       sounds.wrong();
       setFeedback({ type: 'wrong', message: 'Not quite!', sub: q.explanation });
+      if (audioEnabled) {
+        narrationRef.current = narrate(playWrongNarration(), true);
+      }
       if (lives - 1 <= 0) setTimeout(finishWorld, 2000);
       else setTimeout(advance, 2000);
     }
-  }, [streak, q, advance, lives, finishWorld]);
+  }, [streak, q, advance, lives, finishWorld, audioEnabled]);
 
   // World Map
   if (currentWorld < 0) {

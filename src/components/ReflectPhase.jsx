@@ -1,5 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
-import { speak, sounds } from '../utils/audio';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { narrate, stopNarration, sounds } from '../utils/audio';
+import {
+  reflectIntroNarration, reflectCorrectNarration, reflectWrongNarration,
+  reflectConfidenceNarration, reflectCertificateNarration,
+} from '../utils/narration';
 
 const REFLECT_QUESTIONS = [
   { q: "Mia has 6 apples and gets 4 more. What do we do to find the total?", options: [
@@ -33,10 +37,19 @@ export default function ReflectPhase({ stats, onRestart, onGoHome, audioEnabled 
   const [confidence, setConfidence] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [confettiPieces, setConfettiPieces] = useState([]);
+  const narrationRef = useRef(null);
 
   const { score = 0, totalAnswered = 0, xp = 0, maxStreak = 0, worldResults = {} } = stats || {};
   const pct = totalAnswered > 0 ? Math.round((score / totalAnswered) * 100) : 0;
   const totalStars = Object.values(worldResults).reduce((a, r) => a + (r.stars || 0), 0);
+
+  // Play intro narration
+  useEffect(() => {
+    if (step === 0 && audioEnabled) {
+      narrationRef.current = narrate(reflectIntroNarration(), true);
+    }
+    return () => { narrationRef.current?.cancel(); };
+  }, [step, audioEnabled]);
 
   useEffect(() => {
     if (showConfetti) {
@@ -52,12 +65,18 @@ export default function ReflectPhase({ stats, onRestart, onGoHome, audioEnabled 
   const handleTeachAnswer = useCallback((option) => {
     if (teachAnswered) return;
     setTeachAnswered(true);
+    narrationRef.current?.cancel();
     if (option.correct) {
       setTeachCorrect(c => c + 1);
       sounds.correct();
-      if (audioEnabled) speak('Great explanation!', true);
+      if (audioEnabled) {
+        narrationRef.current = narrate(reflectCorrectNarration(), true);
+      }
     } else {
       sounds.wrong();
+      if (audioEnabled) {
+        narrationRef.current = narrate(reflectWrongNarration(), true);
+      }
     }
     setTimeout(() => {
       setTeachAnswered(false);
@@ -73,7 +92,27 @@ export default function ReflectPhase({ stats, onRestart, onGoHome, audioEnabled 
     setConfidence(idx);
     sounds.badge();
     setShowConfetti(true);
+    narrationRef.current?.cancel();
+    if (audioEnabled) {
+      narrationRef.current = narrate(reflectCertificateNarration(pct), true);
+    }
     setTimeout(() => setStep(2), 1000);
+  }, [audioEnabled, pct]);
+
+  // Play confidence narration when step 1 appears
+  useEffect(() => {
+    if (step === 1 && audioEnabled) {
+      narrationRef.current?.cancel();
+      narrationRef.current = narrate(reflectConfidenceNarration(), true);
+    }
+  }, [step, audioEnabled]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      narrationRef.current?.cancel();
+      stopNarration();
+    };
   }, []);
 
   // Step 0: Teach the Mascot
@@ -188,8 +227,8 @@ export default function ReflectPhase({ stats, onRestart, onGoHome, audioEnabled 
           </div>
         </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', marginTop: 24 }}>
-          <button className="btn btn-primary btn-lg" onClick={onRestart}>🔄 Play Again</button>
-          <button className="btn btn-secondary" onClick={onGoHome}>🏠 Home</button>
+          <button className="btn btn-primary btn-lg" onClick={() => { narrationRef.current?.cancel(); stopNarration(); onRestart(); }}>🔄 Play Again</button>
+          <button className="btn btn-secondary" onClick={() => { narrationRef.current?.cancel(); stopNarration(); onGoHome(); }}>🏠 Home</button>
         </div>
       </div>
     </div>
