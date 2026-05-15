@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { generateQuestionBank } from '../utils/questionBank';
 import { speak, sounds } from '../utils/audio';
 import QuestionRenderer from './QuestionRenderer';
@@ -44,6 +44,15 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
   }, [currentWorld, allQuestions]);
 
   const q = worldQuestions[qIndex];
+
+  // Read word problem aloud when it appears
+  useEffect(() => {
+    if (audioEnabled && q && !worldComplete && !feedback && currentWorld >= 0) {
+      // Small delay to let the question render first
+      const timer = setTimeout(() => speak(q.questionText, true), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [qIndex, audioEnabled, q, worldComplete, feedback, currentWorld]);
 
   const startWorld = useCallback((worldId) => {
     setCurrentWorld(worldId);
