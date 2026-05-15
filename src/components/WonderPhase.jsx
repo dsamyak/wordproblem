@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { speak } from '../utils/audio';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { narrate, stopNarration } from '../utils/audio';
+import { wonderNarration, wonderDiscoverNarration } from '../utils/narration';
 
 const WONDER_QUESTIONS = [
   {
@@ -38,6 +39,7 @@ export default function WonderPhase({ onComplete, audioEnabled }) {
   const [wonder] = useState(() => WONDER_QUESTIONS[Math.floor(Math.random() * WONDER_QUESTIONS.length)]);
   const [stage, setStage] = useState(0);
   const [particles, setParticles] = useState([]);
+  const narrationRef = useRef(null);
 
   useEffect(() => {
     const p = Array.from({ length: 20 }, (_, i) => ({
@@ -58,15 +60,30 @@ export default function WonderPhase({ onComplete, audioEnabled }) {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
+  // Play rich narration when question appears
   useEffect(() => {
     if (stage === 1 && audioEnabled) {
-      speak(wonder.question, true);
+      narrationRef.current = narrate(
+        wonderNarration(wonder.question, wonder.subtext),
+        true
+      );
     }
-  }, [stage, wonder.question, audioEnabled]);
+    return () => {
+      narrationRef.current?.cancel();
+    };
+  }, [stage, wonder.question, wonder.subtext, audioEnabled]);
 
   const handleDiscover = useCallback(() => {
-    if (audioEnabled) speak("Let's find out together!", true);
-    setTimeout(() => onComplete(), 600);
+    narrationRef.current?.cancel();
+    stopNarration();
+    if (audioEnabled) {
+      const n = narrate(wonderDiscoverNarration(), true);
+      n.promise.then(() => onComplete());
+      // Fallback timeout in case speech fails
+      setTimeout(() => onComplete(), 3000);
+    } else {
+      setTimeout(() => onComplete(), 600);
+    }
   }, [onComplete, audioEnabled]);
 
   return (

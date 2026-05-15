@@ -1,3 +1,7 @@
+import { useEffect, useRef } from 'react';
+import { narrate, stopNarration } from '../utils/audio';
+import { introNarration } from '../utils/narration';
+
 const JOURNEY_PHASES = [
   { icon: '🔍', label: 'Wonder', desc: 'What is a word problem?' },
   { icon: '📖', label: 'Story', desc: 'See word problems in action' },
@@ -7,6 +11,28 @@ const JOURNEY_PHASES = [
 ];
 
 export default function IntroScreen({ onStart, audioEnabled, onToggleAudio }) {
+  const narrationRef = useRef(null);
+
+  // Play intro narration when screen mounts
+  useEffect(() => {
+    if (audioEnabled) {
+      const timer = setTimeout(() => {
+        narrationRef.current = narrate(introNarration(), true);
+      }, 800);
+      return () => {
+        clearTimeout(timer);
+        narrationRef.current?.cancel();
+        stopNarration();
+      };
+    }
+  }, [audioEnabled]);
+
+  const handleStart = () => {
+    narrationRef.current?.cancel();
+    stopNarration();
+    onStart();
+  };
+
   return (
     <div className="intro-screen">
       {/* Curriculum badge */}
@@ -54,7 +80,7 @@ export default function IntroScreen({ onStart, audioEnabled, onToggleAudio }) {
       </div>
 
       {/* CTA */}
-      <button className="btn btn-primary btn-lg intro-start-btn" onClick={onStart} id="start-journey-btn">
+      <button className="btn btn-primary btn-lg intro-start-btn" onClick={handleStart} id="start-journey-btn">
         🚀 Begin Your Journey!
       </button>
 
