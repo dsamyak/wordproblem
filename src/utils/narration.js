@@ -10,7 +10,6 @@ export function introNarration() {
   return [
     cheer("Hello there, superstar! Welcome to today's maths adventure!"),
     say("Today, we're going to learn something really exciting."),
-    emphasize("Word problems using addition!"),
     say("Have you ever wondered how many toys you have altogether when you get more? That's exactly what we'll learn today!", 600),
     ask("Are you ready to become a word problem champion?"),
     cheer("I know you can do it! Let's go!"),
@@ -203,7 +202,6 @@ export function simulateAllComplete() {
 
 export function playWorldIntro(worldName) {
   return [
-    celebrate(`Welcome to ${worldName}!`),
     instruct("Read each word problem carefully."),
     say("Look for clue words like altogether, in all, or how many."),
     cheer("I believe in you! Let's go!"),
@@ -272,20 +270,17 @@ export function playWorldComplete(worldName, score, total) {
   const pct = Math.round((score / total) * 100);
   if (pct >= 90) {
     return [
-      celebrate(`${worldName} complete!`),
       celebrate(`You got ${score} out of ${total}! That's incredible!`),
       cheer("You're a true maths champion!"),
     ];
   }
   if (pct >= 70) {
     return [
-      celebrate(`${worldName} complete!`),
       say(`You got ${score} out of ${total}! Great effort!`),
       cheer("Keep practicing and you'll be even better!"),
     ];
   }
   return [
-    say(`${worldName} complete!`),
     say(`You got ${score} out of ${total}.`),
     cheer("Good start! Try again to improve your score!"),
   ];
@@ -321,20 +316,17 @@ export function reflectConfidenceNarration() {
 export function reflectCertificateNarration(pct) {
   if (pct >= 80) {
     return [
-      celebrate("Congratulations! You've completed the entire journey!"),
       celebrate("You are an Addition Master!"),
       cheer("I'm so proud of you! Keep up the wonderful work!"),
     ];
   }
   if (pct >= 50) {
     return [
-      celebrate("You've completed the journey!"),
       cheer("Great effort! You're getting better every day!"),
       say("Come back and practice again anytime!"),
     ];
   }
   return [
-    say("You've completed the journey!"),
     cheer("Good start! Practice makes perfect!"),
     say("Try again and watch your score grow!"),
   ];
