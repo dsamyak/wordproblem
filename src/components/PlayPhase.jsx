@@ -45,11 +45,8 @@ export default function PlayPhase({ onComplete, audioEnabled }) {
   // Read word problem aloud with rich narration
   useEffect(() => {
     if (audioEnabled && q && !worldComplete && !feedback && currentWorld >= 0) {
-      const timer = setTimeout(() => {
-        narrationRef.current = narrate(playReadQuestion(q.questionText), true);
-      }, 300);
+      narrationRef.current = narrate(playReadQuestion(q.questionText), true);
       return () => {
-        clearTimeout(timer);
         narrationRef.current?.cancel();
       };
     }

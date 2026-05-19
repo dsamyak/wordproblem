@@ -45,18 +45,18 @@ export default function StoryPhase({ onComplete, audioEnabled }) {
 
   useEffect(() => {
     setTextVis(false); setHlVis(false);
-    const t1 = setTimeout(() => setTextVis(true), 400);
-    const t2 = setTimeout(() => setHlVis(true), 1800);
+    const t1 = setTimeout(() => setTextVis(true), 50);
+    const t2 = setTimeout(() => setHlVis(true), 300);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [slide]);
 
   useEffect(() => {
-    if (textVis && audioEnabled) {
+    if (audioEnabled) {
       narrationRef.current?.cancel();
       narrationRef.current = narrate(getStoryNarration(slide), true);
     }
     return () => { narrationRef.current?.cancel(); };
-  }, [textVis, slide, audioEnabled]);
+  }, [slide, audioEnabled]);
 
   const goNext = useCallback(() => {
     if (anim) return;

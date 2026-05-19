@@ -55,14 +55,14 @@ export default function WonderPhase({ onComplete, audioEnabled }) {
   }, [wonder]);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setStage(1), 800);
-    const t2 = setTimeout(() => setStage(2), 2000);
+    const t1 = setTimeout(() => setStage(1), 100);
+    const t2 = setTimeout(() => setStage(2), 400);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
   // Play rich narration when question appears
   useEffect(() => {
-    if (stage === 1 && audioEnabled) {
+    if (audioEnabled) {
       narrationRef.current = narrate(
         wonderNarration(wonder.question, wonder.subtext),
         true
@@ -71,18 +71,16 @@ export default function WonderPhase({ onComplete, audioEnabled }) {
     return () => {
       narrationRef.current?.cancel();
     };
-  }, [stage, wonder.question, wonder.subtext, audioEnabled]);
+  }, [wonder.question, wonder.subtext, audioEnabled]);
 
   const handleDiscover = useCallback(() => {
     narrationRef.current?.cancel();
     stopNarration();
     if (audioEnabled) {
       const n = narrate(wonderDiscoverNarration(), true);
-      n.promise.then(() => onComplete());
-      // Fallback timeout in case speech fails
-      setTimeout(() => onComplete(), 3000);
+      n.promise.then(() => onComplete()).catch(() => onComplete());
     } else {
-      setTimeout(() => onComplete(), 600);
+      onComplete();
     }
   }, [onComplete, audioEnabled]);
 

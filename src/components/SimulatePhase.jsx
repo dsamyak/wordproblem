@@ -48,7 +48,7 @@ function Station1({ audioEnabled, onNext }) {
         cheer("Let's try this together!"),
         say(`${sc.name} has ${sc.p1} ${sc.obj.name} at the ${sc.setting}.`),
         say(`A friend gives ${sc.pronoun} ${sc.p2} more.`),
-        ask(`How many ${sc.obj.name} does ${sc.name} have altogether?`, 2000),
+        ask(`How many ${sc.obj.name} does ${sc.name} have altogether?`),
         instruct("Press the Combine button to find out!"),
       ], true);
     }
@@ -195,8 +195,8 @@ function Station2({ audioEnabled, onNext }) {
         : `${sc.name} wants ${sc.whole} ${sc.obj.name} in total. ${sc.name} already has ${sc.p1}. How many more does ${sc.name} need?`;
       narRef.current = narrate([
         say("Now let's build a bar model!"),
-        say(text, 600),
-        ask("Can you find the right numbers?", 1800),
+        say(text),
+        ask("Can you find the right numbers?"),
         instruct(mode === 'whole' ? "Click Part A first, then Part B!" : "Click the missing part!"),
       ], true);
     }
@@ -318,7 +318,7 @@ function Station3({ audioEnabled, onComplete }) {
       narRef.current = narrate([
         celebrate("Here comes our frog friend!"),
         say(`The frog starts at number ${sc.start}.`),
-        ask(`What happens when it jumps ${sc.jumps} more times?`, 1800),
+        ask(`What happens when it jumps ${sc.jumps} more times?`),
         instruct("Press Jump to hop the frog forward!"),
         say("Count each jump out loud!"),
       ], true);

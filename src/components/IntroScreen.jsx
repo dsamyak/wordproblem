@@ -16,11 +16,8 @@ export default function IntroScreen({ onStart, audioEnabled, onToggleAudio }) {
   // Play intro narration when screen mounts
   useEffect(() => {
     if (audioEnabled) {
-      const timer = setTimeout(() => {
-        narrationRef.current = narrate(introNarration(), true);
-      }, 800);
+      narrationRef.current = narrate(introNarration(), true);
       return () => {
-        clearTimeout(timer);
         narrationRef.current?.cancel();
         stopNarration();
       };

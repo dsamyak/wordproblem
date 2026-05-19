@@ -10,7 +10,7 @@ export function introNarration() {
   return [
     cheer("Hello there, superstar! Welcome to today's maths adventure!"),
     say("Today, we're going to learn something really exciting."),
-    say("Have you ever wondered how many toys you have altogether when you get more? That's exactly what we'll learn today!", 600),
+    say("Have you ever wondered how many toys you have altogether when you get more? That's exactly what we'll learn today!"),
     ask("Are you ready to become a word problem champion?"),
     cheer("I know you can do it! Let's go!"),
   ];
@@ -20,8 +20,8 @@ export function introNarration() {
 // ─── WONDER PHASE ────────────────────────────────
 export function wonderNarration(questionText, subtext) {
   return [
-    ask(questionText, 2500),
-    say(subtext, 600),
+    ask(questionText),
+    say(subtext),
   ];
 }
 
@@ -39,10 +39,9 @@ export function storySlide1Narration() {
   return [
     cheer("Let me tell you a story about Mia!"),
     say("One morning, Mia brought 6 red apples to school."),
-    pause(400),
     say("Her friend Raju gave her 4 more green apples."),
     say("Mia looked at all her apples and wondered..."),
-    ask("How many apples do I have altogether?", 2000),
+    ask("How many apples do I have altogether?"),
     think("What do you think? How can Mia find out?"),
     instruct("Let's help Mia solve this!"),
   ];
@@ -55,7 +54,6 @@ export function storySlide2Narration() {
     instruct("And the 4 green apples on the other side."),
     say("Then she pushed them all together!"),
     emphasize("When we combine two groups, we ADD!"),
-    pause(500),
     celebrate("6 plus 4 equals 10 apples altogether!"),
     cheer("Great thinking! Adding means combining two groups into one big group!"),
   ];
@@ -67,7 +65,7 @@ export function storySlide3Narration() {
     emphasize("It's called a bar model!"),
     instruct("He drew two smaller bars. One for 6, and one for 4."),
     say("And he showed how together they make the big bar of 10!"),
-    ask("Can you see how the two parts make the whole?", 1800),
+    ask("Can you see how the two parts make the whole?"),
     emphasize("Part plus part equals whole!"),
     cheer("That's the secret! The parts always add up to the whole!"),
   ];
@@ -77,7 +75,7 @@ export function storySlide4Narration() {
   return [
     celebrate("Mia was so excited!"),
     say("She learned she could use number bonds, bar models, and even a number line to solve word problems."),
-    ask("Can we practice more?", 1200),
+    ask("Can we practice more?"),
     cheer("And so, the word problem adventure began!"),
     say("Now it's your turn to explore!"),
     celebrate("Let's try some hands-on activities! Are you ready?"),
@@ -104,7 +102,7 @@ export function simulateStation1Intro(name, objName, p1, p2) {
     cheer("Let's try this together!"),
     say(`${name} has ${p1} ${objName}.`),
     say(`A friend gives ${pronoun} ${p2} more.`),
-    ask(`How many ${objName} does ${name} have altogether?`, 2000),
+    ask(`How many ${objName} does ${name} have altogether?`),
     think("Take a moment to think."),
     instruct("Press the Combine button to see what happens!"),
   ];
@@ -145,8 +143,8 @@ export function simulateStation2Complete(p1, p2, total) {
 export function simulateStation3Intro(text) {
   return [
     say("Now let's build a bar model!"),
-    say(text, 600),
-    ask("Can you find the right numbers for Part A and Part B?", 2000),
+    say(text),
+    ask("Can you find the right numbers for Part A and Part B?"),
     instruct("Click the correct number for Part A first!"),
   ];
 }
@@ -170,7 +168,7 @@ export function simulateStation4Intro(start, jumps) {
   return [
     celebrate("Here comes our frog friend!"),
     say(`The frog starts at number ${start}.`),
-    ask(`What happens when it jumps ${jumps} more times?`, 1800),
+    ask(`What happens when it jumps ${jumps} more times?`),
     instruct("Press the Jump button to hop the frog forward!"),
     say("Count each jump out loud!"),
   ];
@@ -206,7 +204,7 @@ export function playWorldIntro(worldName) {
 
 export function playReadQuestion(questionText) {
   return [
-    say(questionText, 800),
+    say(questionText),
     think("Take a moment to think about the answer."),
   ];
 }
@@ -289,7 +287,7 @@ export function reflectIntroNarration() {
   return [
     say("Now let's think about what we've learned today."),
     instruct("The monkey mascot has some questions for you!"),
-    ask("Can you teach the mascot what you know?", 1500),
+    ask("Can you teach the mascot what you know?"),
     cheer("Let's try this together!"),
   ];
 }
@@ -304,7 +302,7 @@ export function reflectWrongNarration() {
 
 export function reflectConfidenceNarration() {
   return [
-    ask("How do you feel about word problems now?", 1500),
+    ask("How do you feel about word problems now?"),
     say("Be honest! Every answer is a great answer."),
   ];
 }
