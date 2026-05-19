@@ -45,11 +45,7 @@ function Station1({ audioEnabled, onNext }) {
   useEffect(() => {
     if (audioEnabled) {
       narRef.current = narrate([
-        cheer("Let's try this together!"),
-        say(`${sc.name} has ${sc.p1} ${sc.obj.name} at the ${sc.setting}.`),
-        say(`A friend gives ${sc.pronoun} ${sc.p2} more.`),
-        ask(`How many ${sc.obj.name} does ${sc.name} have altogether?`),
-        instruct("Press the Combine button to find out!"),
+        say(`${sc.name} has ${sc.p1} ${sc.obj.name} at the ${sc.setting}. A friend gives ${sc.pronoun} ${sc.p2} more. How many altogether?`),
       ], true);
     }
     return () => { narRef.current?.cancel(); };
@@ -58,10 +54,7 @@ function Station1({ audioEnabled, onNext }) {
   const handleCombine = () => {
     setPhase('combined');
     narRef.current?.cancel();
-    if (audioEnabled) narRef.current = narrate([
-      say(`${sc.p1} plus ${sc.p2} equals... let's see!`),
-      instruct("Now click the answer!"),
-    ], true);
+    if (audioEnabled) narRef.current = narrate([], true);
   };
 
   const handleAnswer = () => {
@@ -69,8 +62,7 @@ function Station1({ audioEnabled, onNext }) {
     sounds.correct();
     narRef.current?.cancel();
     if (audioEnabled) narRef.current = narrate([
-      celebrate(`That's right! ${sc.p1} plus ${sc.p2} equals ${sc.whole}!`),
-      cheer("Excellent work!"),
+      celebrate(`${sc.p1} plus ${sc.p2} equals ${sc.whole}!`),
     ], true);
   };
 
@@ -194,10 +186,7 @@ function Station2({ audioEnabled, onNext }) {
         ? `${sc.name} has ${sc.p1} ${sc.obj.name}. A friend gives ${sc.pronoun} ${sc.p2} more. Can you build the bar model?`
         : `${sc.name} wants ${sc.whole} ${sc.obj.name} in total. ${sc.name} already has ${sc.p1}. How many more does ${sc.name} need?`;
       narRef.current = narrate([
-        say("Now let's build a bar model!"),
         say(text),
-        ask("Can you find the right numbers?"),
-        instruct(mode === 'whole' ? "Click Part A first, then Part B!" : "Click the missing part!"),
       ], true);
     }
     return () => { narRef.current?.cancel(); };
@@ -209,17 +198,17 @@ function Station2({ audioEnabled, onNext }) {
       if (partA === null && val === sc.p1) {
         setPartA(val); sounds.click();
         narRef.current?.cancel();
-        if (audioEnabled) narRef.current = narrate([cheer(`Part A is ${val}!`), instruct("Now find Part B!")], true);
+        if (audioEnabled) narRef.current = narrate([], true);
       } else if (partA !== null && partB === null && val === sc.p2) {
         setPartB(val); sounds.correct(); setRevealed(true);
         narRef.current?.cancel();
-        if (audioEnabled) narRef.current = narrate([celebrate(`${sc.p1} plus ${sc.p2} equals ${sc.whole}!`), cheer("You built it perfectly!")], true);
+        if (audioEnabled) narRef.current = narrate([celebrate(`${sc.p1} plus ${sc.p2} equals ${sc.whole}!`)], true);
       } else { sounds.wrong(); }
     } else {
       if (val === sc.p2) {
         setPartB(val); sounds.correct(); setRevealed(true);
         narRef.current?.cancel();
-        if (audioEnabled) narRef.current = narrate([celebrate(`The missing part is ${sc.p2}!`), cheer(`${sc.p1} plus ${sc.p2} equals ${sc.whole}!`)], true);
+        if (audioEnabled) narRef.current = narrate([celebrate(`${sc.p1} plus ${sc.p2} equals ${sc.whole}!`)], true);
       } else { sounds.wrong(); }
     }
   };
@@ -316,11 +305,7 @@ function Station3({ audioEnabled, onComplete }) {
   useEffect(() => {
     if (audioEnabled) {
       narRef.current = narrate([
-        celebrate("Here comes our frog friend!"),
-        say(`The frog starts at number ${sc.start}.`),
-        ask(`What happens when it jumps ${sc.jumps} more times?`),
-        instruct("Press Jump to hop the frog forward!"),
-        say("Count each jump out loud!"),
+        say(`Start at ${sc.start}. Jump ${sc.jumps} more times. Where do you land?`),
       ], true);
     }
     return () => { narRef.current?.cancel(); };
@@ -335,8 +320,7 @@ function Station3({ audioEnabled, onComplete }) {
         sounds.correct();
         narRef.current?.cancel();
         if (audioEnabled) narRef.current = narrate([
-          celebrate(`${sc.start} plus ${sc.jumps} equals ${answer}! Great jumping!`),
-          cheer("The frog landed perfectly!"),
+          celebrate(`${sc.start} plus ${sc.jumps} equals ${answer}!`),
         ], true);
       }, 300);
     }
