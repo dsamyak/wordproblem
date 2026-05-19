@@ -20,12 +20,8 @@ export function introNarration() {
 // ─── WONDER PHASE ────────────────────────────────
 export function wonderNarration(questionText, subtext) {
   return [
-    say("Hmm, let me think about this for a moment."),
-    pause(600),
     ask(questionText, 2500),
-    think("Take a moment to think about that."),
     say(subtext, 600),
-    cheer("What a wonderful question! Let's discover the answer together!"),
   ];
 }
 
