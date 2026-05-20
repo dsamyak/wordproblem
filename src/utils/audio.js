@@ -135,7 +135,6 @@ export function speak(text, enabled = true, style = 'statement') {
 
     playId++;
     const currentPlayId = playId;
-    window.speechSynthesis?.cancel(); // Cancel any fallback speech
     isSpeaking = true;
 
     try {
@@ -231,7 +230,6 @@ export function narrate(segments, enabled = true) {
   const cancel = () => {
     cancelled = true;
     if (currentQueue === queueId) {
-      window.speechSynthesis?.cancel();
       isSpeaking = false;
       currentQueue = null;
     }
@@ -273,7 +271,6 @@ export function narrate(segments, enabled = true) {
 export function stopNarration() {
   playId++; // Invalidate any pending ElevenLabs fetches
   currentQueue = null;
-  window.speechSynthesis?.cancel();
   if (currentAudio) {
     currentAudio.pause();
     currentAudio.currentTime = 0;
