@@ -11,7 +11,6 @@ node_modules
 dist
 dist-ssr
 *.local
-_reference_repo
 
 # Editor directories and files
 .vscode/*
@@ -23,5 +22,3 @@ _reference_repo
 *.njsproj
 *.sln
 *.sw?
-.env.*
-_temp_numberbound
