@@ -1,192 +1,100 @@
-// ──────────────────────────────────────────────────
-// Narration Scripts — Natural Teacher Voice
-// Warm, child-friendly narration for each lesson phase
-// ──────────────────────────────────────────────────
-
-import { say, ask, cheer, emphasize, think, celebrate, instruct, pause } from './audio';
-
-// ─── INTRO SCREEN ────────────────────────────────
-export function introNarration() {
-  return [
-    say("Word Problems Using Addition"),
-    say("Lesson 2.5. Learn to solve addition word problems"),
-    cheer("I'll teach you to solve word problems!"),
-  ];
-}
-
-// ─── WONDER PHASE ────────────────────────────────
-export function wonderNarration(questionText, subtext) {
-  return [
-    ask(questionText),
-    say(subtext),
-  ];
-}
-
-export function wonderDiscoverNarration() {
-  return [];
-}
-
-// ─── STORY PHASE ─────────────────────────────────
-
-export function getStoryNarration(slideIndex) {
-  switch (slideIndex) {
-    case 0:
-      return [
-        say("One morning, Mia brought 6 red apples to school. Her friend Raju gave her 4 more green apples. Mia looked at all her apples and wondered..."),
-        ask("How many apples do I have altogether?"),
-        say("Let's help Mia!"),
-      ];
-    case 1:
-      return [
-        say("Priya showed Mia a trick! She put the 6 red apples on one side and the 4 green apples on the other. Then she pushed them all together! When we combine two groups, we ADD! said Priya."),
-        emphasize("6 plus 4 equals 10 apples altogether!"),
-        say("Adding means combining!"),
-      ];
-    case 2:
-      return [
-        say("Then Wei Ming drew a special picture called a bar model. He drew two smaller bars — one for 6 and one for 4 — and showed how together they make the big bar of 10! The parts make the whole! he said."),
-        emphasize("Part plus Part equals Whole!"),
-        say("Parts make the whole!"),
-      ];
-    case 3:
-      return [
-        say("Mia was so excited! She learned she could use number bonds, bar models, and even a number line to solve word problems. Can we practice more? she asked. And so, the word problem adventure began!"),
-        cheer("Word problems — here we come!"),
-        say("Your turn now!"),
-      ];
-    default:
-      return [];
+// src/utils/narration.js
+//
+// Every narration segment is a { text, style } object, where `style`
+// selects a voice-setting preset from config/audio.config.js.
+//
+// IMPORTANT: unit abbreviations are always spoken as full words —
+// "5 centimetres", "20 cents" — never as raw symbols or abbreviations
+// ("5cm", "20¢"), since text-to-speech misreads those. Hand-authored
+// text (story slides, wonder questions) is already written this way
+// below. For the procedurally generated Practice-phase questions,
+// spokenSafe() rewrites the abbreviated units baked into
+// questionText/hint/explanation strings into full words before they're
+// narrated — the on-screen text keeps the compact form ("5 cm", "40¢")
+// since that's how word problems are actually printed.
+export function spokenSafe(text) {
+  if (!text) return text;
+  let t = text;
+  t = t.replace(/(\d+)\s?¢/g, '$1 cents');
+  t = t.replace(/\$(\d+)/g, '$1 dollars');
+  const unitWords = {
+    cm: 'centimetres',
+    kg: 'kilograms',
+  };
+  for (const [abbr, word] of Object.entries(unitWords)) {
+    const re = new RegExp(`(\\d)\\s?${abbr}\\b`, 'g');
+    t = t.replace(re, `$1 ${word}`);
   }
+  return t;
 }
 
-// ─── SIMULATE PHASE ──────────────────────────────
+// ── Story narration ──
+// One segment per slide, in slide order. StoryPhase.jsx plays
+// storyNarrations.wordProblems[currentSlide] whenever the slide changes.
+export const storyNarrations = {
+  wordProblems: [
+    {
+      text: "Priya brought 6 red stickers to school. Her classmate Wei Ming gave her 4 more blue stickers. Priya looked at all her stickers and wondered, how many stickers do I have altogether?",
+      style: 'thinking',
+    },
+    {
+      text: "Wei Ming has a trick! He put the 6 red stickers on one side and the 4 blue stickers on the other. Then he pushed them all together. When we combine two groups, we add, said Wei Ming. 6 plus 4 makes 10 stickers altogether!",
+      style: 'instruction',
+    },
+    {
+      text: "Then Farhan drew a special picture called a bar model. He drew two smaller bars, one for 6 and one for 4, and showed how together they make one big bar of 10. The parts make the whole, he said.",
+      style: 'emphasis',
+    },
+    {
+      text: "Priya grinned. Now she could use number bonds, bar models, and even a number line to solve any addition word problem. Can we practice more, she asked. And so the word problem adventure began!",
+      style: 'celebration',
+    },
+  ],
+};
 
-export function simulateStation1Intro(name, objName, p1, p2) {
-  const pronoun = (name === 'Siti' || name === 'Mia') ? 'her' : 'him';
+// ── Wonder-hook narration ──
+// Speaks the hook question, then its follow-up subtext. Note: the same
+// wonder.question / wonder.subtext strings are also shown on screen, so
+// wonder.constants.js already spells every unit out in full for this
+// reason (digits themselves are fine — text-to-speech reads "6" or "10"
+// correctly; it's abbreviations like "¢" or "cm" that are misread).
+export function wonderHookNarration(wonder) {
+  if (!wonder) return [];
+  const segments = [];
+  if (wonder.question) segments.push({ text: wonder.question, style: 'question' });
+  if (wonder.subtext) segments.push({ text: wonder.subtext, style: 'thinking' });
+  return segments;
+}
+
+// ── Simulate station intro narration ──
+export function simulationStationNarration(stationId) {
+  const scripts = [
+    [
+      { text: 'Sticker Combine Mission!', style: 'emphasis' },
+      { text: 'Push the two groups together, then tap the number that shows how many there are altogether.', style: 'instruction' },
+    ],
+    [
+      { text: 'Bar Model Builder Mission!', style: 'emphasis' },
+      { text: 'Read the word problem, then tap the two parts to build the bar model and find the whole.', style: 'instruction' },
+    ],
+    [
+      { text: 'Number Line Hop Mission!', style: 'emphasis' },
+      { text: 'Watch the frog hop along the number line, then type in the number where it lands.', style: 'instruction' },
+    ],
+  ];
+  return scripts[stationId] || [];
+}
+
+// ── Boss Battle narration ──
+export function bossBattleNarration() {
   return [
-    say(`${name} has ${p1} ${objName}. A friend gives ${pronoun} ${p2} more. How many altogether?`),
+    { text: 'Boss battle time! Answer every word problem correctly to win.', style: 'emphasis' },
+    { text: 'Remember: find the two parts first, then add them together.', style: 'instruction' },
   ];
 }
 
-export function simulateStation1Combine(p1, p2) {
-  return [];
-}
-
-export function simulateStation1Answer(p1, p2, whole) {
+export function bossWinNarration() {
   return [
-    celebrate(`${p1} plus ${p2} equals ${whole}!`),
-  ];
-}
-
-export function simulateStation2Intro(objName) {
-  return [
-    say("Find both parts to reveal the whole!"),
-  ];
-}
-
-export function simulateStation2Complete(p1, p2, total) {
-  return [
-    celebrate(`${p1} plus ${p2} equals ${total}!`),
-  ];
-}
-
-export function simulateStation3Intro(text) {
-  return [
-    say(text),
-  ];
-}
-
-export function simulateStation3PartA(val) {
-  return [];
-}
-
-export function simulateStation3Complete(p1, p2, whole) {
-  return [
-    celebrate(`${p1} plus ${p2} equals ${whole}!`),
-  ];
-}
-
-export function simulateStation4Intro(start, jumps) {
-  return [
-    say(`Start at ${start}. Jump ${jumps} more times. Where do you land?`),
-  ];
-}
-
-export function simulateStation4Complete(start, jumps, answer) {
-  return [
-    celebrate(`${start} plus ${jumps} equals ${answer}!`),
-    cheer("Great jumping!"),
-  ];
-}
-
-export function simulateAllComplete() {
-  return [];
-}
-
-// ─── PLAY PHASE ──────────────────────────────────
-
-export function playWorldIntro(worldName) {
-  return [
-    celebrate(`Welcome to ${worldName}!`),
-  ];
-}
-
-export function playReadQuestion(questionText) {
-  return [
-    say(questionText),
-  ];
-}
-
-export function playCorrectNarration(streak = 0) {
-  return [];
-}
-
-export function playWrongNarration() {
-  return [];
-}
-
-export function playWorldComplete(worldName, score, total) {
-  return [
-    say(`${worldName} Complete!`),
-    say(`Score: ${score} out of ${total}`),
-  ];
-}
-
-// ─── REFLECT PHASE ───────────────────────────────
-
-export function reflectIntroNarration() {
-  return [
-    say("Teach the mascot what you learned!"),
-  ];
-}
-
-export function reflectCorrectNarration() {
-  return [];
-}
-
-export function reflectWrongNarration() {
-  return [];
-}
-
-export function reflectConfidenceNarration() {
-  return [
-    ask("How do you feel about word problems?"),
-    say("Be honest — every answer is great!"),
-  ];
-}
-
-export function reflectCertificateNarration(pct) {
-  if (pct >= 80) {
-    return [
-      say("Incredible! You are an Addition Master!"),
-    ];
-  }
-  if (pct >= 50) {
-    return [
-      say("Great effort! Keep practicing!"),
-    ];
-  }
-  return [
-    say("Good start! Try again to improve!"),
+    { text: 'Boss defeated! Fantastic addition word problem solving!', style: 'celebration' },
   ];
 }
